@@ -17,6 +17,16 @@ dynpr welcome.txt "John Doe" -user Alice -env production
 
 This will render the `welcome.txt` template using the provided values, substituting the variables accordingly.
 
+## Use Cases
+
+One of the most compelling use cases for `dynprompt` is its seamless integration with Simon Willison's excellent [LLM](https://github.com/simonw/llm) command-line tool. By combining `dynprompt` with `llm`, you can dynamically generate prompts and immediately process them through your preferred large language model.
+
+For example, to generate an essay prompt on "Climate change" and process it with your configured LLM:
+```
+dynpr write_essay 'Climate change' | llm
+```
+This pipeline allows you to effortlessly create structured prompts and obtain responses from your LLM of choice, streamlining tasks such as content generation, code explanation, or data analysis, etc.
+
 ## Installation
 
 Use the included `deploy.sh` script to install `dynpr` into your local bin directory:
