@@ -1,0 +1,80 @@
+#!/usr/bin/env ruby
+
+require 'fileutils'
+
+def parse_args(argv)
+  raise "Template filename is required." if argv.empty?
+
+  filename = argv.shift
+  keyword_args = {}
+  positional_args = []
+
+  while argv.any?
+    if argv.first.start_with?('-')
+      key = argv.shift[1..]
+      raise "Missing value for keyword argument -#{key}" if argv.empty?
+      value = argv.shift
+      raise "Duplicate keyword argument -#{key}" if keyword_args.has_key?(key)
+      keyword_args[key] = value
+    else
+      positional_args << argv.shift
+    end
+  end
+
+  [filename, positional_args, keyword_args]
+end
+
+def parse_template(template_content)
+  placeholders = template_content.scan(/\{\{(\w+)(?::([^}]+))?\}\}/)
+  placeholders.map { |name, default| [name, default] }.uniq
+end
+
+def fill_template(template_content, values)
+  template_content.gsub(/\{\{(\w+)(?::([^}]+))?\}\}/) do
+    key, default = $1, $2
+    if values.key?(key)
+      values[key]
+    elsif default
+      default
+    else
+      raise "Missing required value for '#{key}'"
+    end
+  end
+end
+
+begin
+  env_dir = ENV['DYNPR_TEMPLATE_DIR']
+  raise "DYNPR_TEMPLATE_DIR is not defined." unless env_dir
+
+  filename, positional_args, keyword_args = parse_args(ARGV.dup)
+  raise "Currently only single positional argument is allowed" if positional_args.size > 1
+
+  content = File.read(File.join(env_dir, filename))
+
+  values = keyword_args
+  if positional_args.size == 1
+    values = values.merge({ 'INPUT' => positional_args[0] })
+  end
+  parsed_vars = parse_template(content)
+
+  missing_vars = parsed_vars.select { |var, default| default.nil? && !values.key?(var) }
+  unless missing_vars.empty?
+    raise "Missing values for required variables: #{missing_vars.map(&:first).join(', ')}"
+  end
+
+  redundant_vars = values.select {|var, value|
+    tpl_vars = parsed_vars.select {|var2, default| var == var2}
+    tpl_vars.size == 0
+  }
+
+  unless redundant_vars.empty?
+    raise "Redundant variables provided: #{redundant_vars.map(&:first).join(', ')}"
+  end
+
+  result = fill_template(content, values)
+  puts result
+
+rescue => e
+  warn "Error: #{e.message}"
+  exit 1
+end

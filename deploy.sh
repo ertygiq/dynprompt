@@ -1,0 +1,1 @@
+sudo cp dynpr /usr/local/bin/dynpr
