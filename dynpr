@@ -42,11 +42,26 @@ def fill_template(template_content, values)
   end
 end
 
+def get_stdin_input
+  if !STDIN.tty?
+    STDIN.read
+  else
+    nil
+  end
+end
+
 begin
   env_dir = ENV['DYNPR_TEMPLATE_DIR']
   raise "DYNPR_TEMPLATE_DIR is not defined." unless env_dir
 
   filename, positional_args, keyword_args = parse_args(ARGV.dup)
+
+  # If there is data in STDIN, treat it like first positional argument. In other words as a data from {{INPUT}} placeholder.
+  stdin_input = get_stdin_input
+  if stdin_input
+    positional_args.unshift(stdin_input)
+  end
+
   raise "Currently only single positional argument is allowed" if positional_args.size > 1
 
   content = File.read(File.join(env_dir, filename))
